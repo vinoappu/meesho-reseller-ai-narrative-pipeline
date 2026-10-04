@@ -1,0 +1,70 @@
+---------------------------------
+--1. Monthly revenue by category 
+---------------------------------
+SELECT
+    month,
+    category,
+    ROUND(SUM(quantity * unit_price), 2) AS revenue,
+    COUNT(*) AS n_orders
+FROM orders
+GROUP BY month, category
+ORDER BY MIN(order_date), category;
+
+-----------------------------------------------
+--2. Region-wise total revenue and order count 
+-----------------------------------------------
+SELECT
+    r.region,
+    ROUND(SUM(o.quantity * o.unit_price), 2) AS revenue,
+    COUNT(*) AS n_orders
+FROM orders AS o
+JOIN resellers AS r
+    ON o.reseller_id = r.reseller_id
+GROUP BY r.region
+ORDER BY r.region;
+
+--------------------------------------------
+--3. Top resellers by total spend 
+--------------------------------------------
+SELECT
+    r.reseller_id,
+    ROUND(SUM(o.quantity * o.unit_price), 2) AS total_spend
+FROM orders AS o
+JOIN resellers AS r
+    ON o.reseller_id = r.reseller_id
+GROUP BY r.reseller_id
+HAVING SUM(o.quantity * o.unit_price) > 50000  --use actual formula to avoid decimal missing
+ORDER BY total_spend DESC
+LIMIT 5;
+
+-----------------------------------------------
+--4. Resellers who have never placed an order 
+-----------------------------------------------
+--Find resellers with no orders:
+SELECT r.reseller_id, r.reseller_name
+FROM resellers AS r
+LEFT JOIN orders AS o
+    ON o.reseller_id = r.reseller_id
+WHERE o.order_id IS NULL
+ORDER BY r.reseller_id;
+
+--Demonstrate the counts for the unmatched reseller
+SELECT
+    r.reseller_id,
+    COUNT(*) AS count_star,  			-- COUNT(*) includes that row and returns 1, so it is the wrong way to test for a zero-match LEFT JOIN row
+    COUNT(o.order_id) AS count_order_id  	-- COUNT(o.order_id) ignores the NULL order_id and correctly returns 0
+FROM resellers AS r
+LEFT JOIN orders AS o
+    ON o.reseller_id = r.reseller_id
+WHERE r.reseller_id = 'RS024'
+GROUP BY r.reseller_id;
+
+---------------------------------------------------------------
+--5. Average Order Value (AOV) for June, Delivered orders only 
+---------------------------------------------------------------
+--June Delivered AOV is 1267.69: total revenue is 276356.70 across 218 orders.
+SELECT
+    SUM(quantity * unit_price) / COUNT(*) AS aov
+FROM orders
+WHERE month = 'June'
+  AND status = 'Delivered';
